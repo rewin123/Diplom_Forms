@@ -128,26 +128,39 @@ namespace Diplom_Forms
                 float[,] temp = new float[val.GetLength(0), val.GetLength(1)];
                 float[,] temp2 = new float[val.GetLength(0), val.GetLength(1)];
                 byte[,] b_temp = new byte[val.GetLength(0), val.GetLength(1)];
+                byte[,] b_temp2 = new byte[val.GetLength(0), val.GetLength(1)];
+
+                LinesTracer tracer = new LinesTracer();
+                List<Rectangle> cars = new List<Rectangle>();
 
                 VideoProcessig videoProcessig = new VideoProcessig(openFileDialog1.FileName, (map) =>
                 {
                     val.WriteRGB(map);
                     Procedurs.MorfSubtract(morf, avrs, val, temp);
                     b_temp.ForEach(temp, (b, v) => (byte)(v > 0.2f ? 1 : 0));
+                    b_temp.BinaryThiken(b_temp2);
+                    b_temp2.BinaryThiken(b_temp);
+                    b_temp.BinaryThiken(b_temp2);
+                    b_temp2.BinaryThiken(b_temp);
 
                     Morf mm = Morf.GenerateBinar(b_temp);
+
+                    cars.Clear();
 
                     using (Graphics gr = Graphics.FromImage(map))
                     {
                         for (int i = 0; i < mm.regions.Count; i++)
                         {
                             var rect = mm.regions[i].GetSize();
-                            if (rect.Width * rect.Height > 200)
+                            if (rect.Width * rect.Height > 1000)
                             {
                                 gr.DrawRectangle(Pens.Green, rect);
+                                cars.Add(rect);
                             }
                         }
                     }
+
+                    tracer.TrackAndWrite(cars, ref map, 0.2f * map.Width);
 
                     return map;
                 });

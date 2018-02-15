@@ -10,7 +10,7 @@ namespace Diplom_Forms
 {
     static class Procedurs
     {
-        public static Vector3[,] Medium(string path, int steps = 200)
+        public static Vector3[,] Medium(string path, int steps = 100)
         {
             VideoFileReader reader = new VideoFileReader();
             reader.Open(path);
@@ -69,6 +69,19 @@ namespace Diplom_Forms
                 for (int y = 0; y < height; y++)
                 {
                     output[x,y] = output[x / size * size, y / size * size];
+                }
+            }
+        }
+
+        public static void BinaryThiken(this byte[,] arr, byte[,] target)
+        {
+            int dwidth = arr.GetLength(0) - 1;
+            int dheight = arr.GetLength(1) - 1;
+            for (int x = 1; x < dwidth; x++)
+            {
+                for(int y = 1;y < dheight;y++)
+                {
+                    target[x, y] =(byte)(arr[x, y] | arr[x - 1, y] | arr[x + 1, y] | arr[x, y - 1] | arr[x, y + 1]);
                 }
             }
         }
