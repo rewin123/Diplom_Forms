@@ -122,14 +122,17 @@ namespace Diplom_Forms
                 }
             }
 
+            float kX = count / (maxX - minX);
+            float kY = count / (maxY - minY);
+            float kZ = count / (maxZ - minZ);
             for (int x = 0; x < width; x++)
             {
                 for (int y = 0; y < height; y++)
                 {
                     Vector3 v = map[x, y];
-                    int xpos = (int)((v.x - minX) / (maxX - minX) * count);
-                    int ypos = (int)((v.y - minY) / (maxY - minY) * count);
-                    int zpos = (int)((v.z - minZ) / (maxZ - minZ) * count);
+                    int xpos = (int)((v.x - minX) * kX);
+                    int ypos = (int)((v.y - minY) * kY);
+                    int zpos = (int)((v.z - minZ) * kZ);
 
                     regions[xpos, ypos, zpos].AddPoint(x, y);
                 }

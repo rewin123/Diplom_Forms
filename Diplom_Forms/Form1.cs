@@ -7,6 +7,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Emgu.CV;
+using Emgu;
+using Emgu.CV.Structure;
+using Emgu.CV.Features2D;
 
 namespace Diplom_Forms
 {
@@ -117,6 +121,10 @@ namespace Diplom_Forms
         {
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
             {
+                Image<Gray, Byte> last = null;
+                Image<Gray, float> flowX = null;
+                Image<Gray, float> flowY = null;
+
                 Vector3[,] val = Procedurs.Medium(openFileDialog1.FileName);
                 Morf morf = Morf.GenerateKMean(val, 5);
                 morf.RemoveEmptyRegions();
@@ -142,6 +150,18 @@ namespace Diplom_Forms
                     b_temp2.BinaryThiken(b_temp);
                     b_temp.BinaryThiken(b_temp2);
                     b_temp2.BinaryThiken(b_temp);
+
+                    Image<Gray, Byte> image = new Image<Gray, byte>(map);
+                    
+                    if(last == null)
+                    {
+                        last = image;
+                        return map;
+                    }
+
+                    CvInvoke.CalcOpticalFlowFarneback(last,image, flowX, flowY, 0.5, 3, 10, 3, 5, 1.5, Emgu.CV.CvEnum.OpticalflowFarnebackFlag.Default);
+                    CvInvoke.AccumulateSquare(flowX, flowY);
+                    CvInvoke.Sobel(flowY, flowX, Emgu.CV.CvEnum.DepthType.Cv32F, 1, 0);
 
                     Morf mm = Morf.GenerateBinar(b_temp);
 
@@ -177,9 +197,15 @@ namespace Diplom_Forms
                 {
                     Vector3[,] arr = map.GetRGB();
                     Morf m = Morf.GenerateKMean(arr,5);
+                    m.RemoveEmptyRegions();
                     for(int i = 0;i < m.regions.Count;i++)
                     {
-                        m.regions[i].Fill(m.regions[i].GetAverage(arr), arr);
+
+                        if (m.regions[i].Size < 20000)
+                        {
+                            m.regions[i].Fill(new Vector3(1, 1, 1), arr);
+                        }
+                        else m.regions[i].Fill(m.regions[i].GetAverage(arr), arr);
                     }
 
                     return arr;
@@ -195,22 +221,177 @@ namespace Diplom_Forms
 
                 VideoProcessig videoProcessig = new VideoProcessig(openFileDialog1.FileName, (map) =>
                 {
+                    
                     Vector3[,] arr = map.GetRGB();
                     float[,] sobol = new float[map.Width, map.Height];
                     int dwidth = map.Width - 1;
                     int dheight = map.Height - 1;
+                    float temp = 0;
                     for(int x = 1;x < dwidth;x++)
                     {
                         for(int y = 1;y < dheight;y++)
                         {
-                            sobol[x, y] = (arr[x, y] - arr[x, y - 1]).Magnitude() + (arr[x, y] - arr[x - 1, y]).Magnitude();
+                            sobol[x,y] = Math.Abs(2 * arr[x - 1, y].Magnitude() + arr[x - 1, y - 1].Magnitude() + arr[x - 1, y + 1].Magnitude()
+                            - 2 * arr[x + 1, y].Magnitude() - arr[x + 1, y - 1].Magnitude() - arr[x + 1, y + 1].Magnitude());
+
+                            sobol[x, y] += Math.Abs(2 * arr[x, y - 1].Magnitude() + arr[x - 1, y - 1].Magnitude() + arr[x + 1, y - 1].Magnitude()
+                            - 2 * arr[x, y + 1].Magnitude() - arr[x - 1, y + 1].Magnitude() - arr[x + 1, y + 1].Magnitude());
+
+                            sobol[x, y] /= 9;
+
+                            sobol[x,y] = (byte)(sobol[x, y] > 0.1 ? 1 : 0);
+
                         }
                     }
-
-                    sobol.RegMaximum();
+                    
 
                     return sobol;
                 });
+                videoProcessig.Show();
+            }
+        }
+
+        private void button10_Click(object sender, EventArgs e)
+        {
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                VideoProcessig videoProcessig = new VideoProcessig(openFileDialog1.FileName, (map) =>
+                {
+                    Image<Gray, Byte> image = new Image<Gray, byte>(map);
+                    var result = image.Canny(80, 100);
+                    return result.Bitmap;
+                });
+                videoProcessig.Show();
+            }
+        }
+
+        private void button11_Click(object sender, EventArgs e)
+        {
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                Image<Gray, Byte> last = null;
+                Image<Gray, float> flowX = null;
+                Image<Gray, float> flowY = null;
+                Image<Gray, byte> draw = null;
+                MKeyPoint[] keys;
+
+                Accord.Video.FFMPEG.VideoFileWriter wr = new Accord.Video.FFMPEG.VideoFileWriter();
+                
+                VideoProcessig videoProcessig = new VideoProcessig(openFileDialog1.FileName, (map) =>
+                {
+                    Image<Gray, Byte> image = new Image<Gray, byte>(map);
+
+                    if(last == null)
+                    {
+                        last = image;
+                        flowX = new Image<Gray, float>(map.Size);
+                        flowY = new Image<Gray, float>(map.Size);
+                        draw = new Image<Gray, byte>(map.Size);
+                        wr.Open("result.avi", map.Width, map.Height);
+                        return map;
+                    }
+                    else
+                    {
+                        CvInvoke.CalcOpticalFlowFarneback(last, image, flowX, flowY, 0.5, 3, 10, 3, 5, 1.5, Emgu.CV.CvEnum.OpticalflowFarnebackFlag.Default);
+                        last = image;
+                    }
+
+                    CvInvoke.AccumulateSquare(flowX, flowY);
+                    CvInvoke.Canny(flowY.Convert<byte>(FloatToByte), draw, 40, 50);
+                    
+
+                    var result = draw.Bitmap;
+                    wr.WriteVideoFrame(result);
+                    return result;
+                });
+                videoProcessig.Show();
+            }
+
+            byte FloatToByte(float val)
+            {
+                return (byte)val;
+            }
+        }
+
+        private void button12_Click(object sender, EventArgs e)
+        {
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                Image<Gray, Byte> last = null;
+                Image<Gray, float> flowX = null;
+                Image<Gray, float> flowY = null;
+                Image<Gray, float> draw = null;
+
+                Vector3[,] val = Procedurs.Medium(openFileDialog1.FileName);
+                Morf morf = Morf.GenerateKMean(val, 5);
+                morf.RemoveEmptyRegions();
+                List<Vector3> avrs = new List<Vector3>();
+                for (int i = 0; i < morf.regions.Count; i++)
+                {
+                    avrs.Add(morf.regions[i].GetAverage(val));
+                }
+                float[,] temp = new float[val.GetLength(0), val.GetLength(1)];
+
+                VideoProcessig videoProcessig = new VideoProcessig(openFileDialog1.FileName, (map) =>
+                {
+                    val.WriteRGB(map);
+                    Procedurs.MorfSubtract(morf, avrs, val, temp);
+                    Image<Gray, byte> image = new Image<Gray, byte>(map.Size);
+                    temp.RegMaximum();
+                    for(int x = 0;x < map.Width;x++)
+                    {
+                        for(int y = 0;y < map.Height;y++)
+                        {
+                            Gray g = image[y, x];
+                            g.Intensity = temp[x, y] * 255;
+                            image[y, x] = g;
+                        }
+                    }
+
+                    if (last == null)
+                    {
+                        last = image;
+                        flowX = new Image<Gray, float>(map.Size);
+                        flowY = new Image<Gray, float>(map.Size);
+                        draw = new Image<Gray, float>(map.Size);
+                    }
+                    else
+                    {
+                        CvInvoke.CalcOpticalFlowFarneback(last, image, flowX, flowY, 0.5, 3, 10, 3, 5, 1.5, Emgu.CV.CvEnum.OpticalflowFarnebackFlag.Default);
+                        last = image;
+                    }
+
+                    double max = 0;
+                    for (int y = 0; y < map.Height; y++)
+                    {
+                        for (int x = 0; x < map.Width; x++)
+                        {
+                            Gray g = draw[y, x];
+                            double value = Math.Abs(flowX[y, x].Intensity) + Math.Abs(flowY[y, x].Intensity);
+                            max = Math.Max(value, max);
+                            g.Intensity = value;
+                            draw[y, x] = g;
+                        }
+                    }
+
+                    for (int y = 0; y < map.Height; y++)
+                    {
+                        for (int x = 0; x < map.Width; x++)
+                        {
+                            Gray g = draw[y, x];
+                            g.Intensity /= max;
+                            g.Intensity *= 255;
+                            draw[y, x] = g;
+                        }
+                    }
+
+
+
+                    var result = draw.Bitmap;
+                    return result;
+                });
+
+                
                 videoProcessig.Show();
             }
         }

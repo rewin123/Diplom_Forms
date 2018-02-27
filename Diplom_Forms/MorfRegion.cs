@@ -155,5 +155,32 @@ namespace Diplom_Forms
             int ymax = ypos.Max();
             return new Rectangle(xmin, ymin, xmax - xmin, ymax - ymin);
         }
+
+        //public List<Region> Split(byte[,] temp_arr)
+        //{
+        //    List<Region> regions = new List<Region>();
+            
+
+        //    int width = temp_arr.GetLength(0);
+        //    int height = temp_arr.GetLength(1);
+        //    for(int x = 0;x < width;x++)
+        //    {
+        //        for(int y = 0;y < height;y++)
+        //        {
+        //            temp_arr[x, y] = 0;
+        //        }
+        //    }
+        //    Fill<byte>(1, temp_arr);
+
+        //    int[,] indexes = new int[width, height];
+
+        //    for(int x = 1;x < width;x++)
+        //    {
+        //        for(int y = 0;y < height;y++)
+        //        {
+
+        //        }
+        //    }
+        //}
     }
 }
