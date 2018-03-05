@@ -57,8 +57,9 @@ namespace Diplom_Forms
         private void timer1_Tick(object sender, EventArgs e)
         {
             pictureBox1.Image = func(reader.ReadVideoFrame(pos));
+            GC.Collect();
             pos++;
-            if(pos >= reader.FrameCount)
+            if (pos >= reader.FrameCount)
             {
                 reader.Close();
             }

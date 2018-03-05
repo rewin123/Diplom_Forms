@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Accord.Video.FFMPEG;
+using Emgu.CV;
+using Emgu.CV.Structure;
 
 namespace Diplom_Forms
 {
@@ -17,21 +19,28 @@ namespace Diplom_Forms
 
             Vector3[,] data = new Vector3[reader.Width, reader.Height];
 
-            Vector3[,] temp = new Vector3[reader.Width, reader.Height];
-
-            data.ForEach(() => new Vector3());
-            temp.ForEach(() => new Vector3());
+            var temp = new Image<Rgb, float>(reader.Width,reader.Height);
+            
 
             for(int i = 0;i < steps;i++)
             {
                 using (Bitmap img = reader.ReadVideoFrame(i * (int)reader.FrameCount / steps))
                 {
-                    temp.WriteRGB(img);
-                    data.ForEach(temp, (m, v) => m.Add(v));
+                    var arr = new Image<Rgb, float>(img);
+                    temp.Accumulate(arr);
+                    //temp.WriteRGB(img);
+                    //data.ForEach(temp, (m, v) => m.Add(v));
                 }
             }
-
-            data.ForEach((m) => m.Divide(steps));
+            
+            for(int x = 0;x < reader.Width;x++)
+            {
+                for(int y = 0;y < reader.Height;y++)
+                {
+                    Rgb rgb = temp[y, x];
+                    data[x, y] = new Vector3((float)rgb.Red / steps / 255, (float)rgb.Green / steps / 255, (float)rgb.Blue / steps / 255);
+                }
+            }
 
             reader.Close();
 

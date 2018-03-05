@@ -26,26 +26,37 @@ namespace Diplom_Forms
                 founded = false;
                 var car = cars[i];
                 size = car.Width * car.Height;
-                for(int j = 0;j < new_cars.Count;j++)
+                double rmin = double.MaxValue;
+                int jbest = -1;
+                for (int j = 0;j < new_cars.Count;j++)
                 {
                     dx = car.X - new_cars[j].X;
                     dy = car.Y - new_cars[j].Y;
                     double r = Math.Sqrt(dx * dx + dy * dy);
                     if(r < max_dr && Math.Abs(1 - size / new_cars[j].Width / new_cars[j].Height) < max_dsize)
                     {
-                        founded = true;
-                        cars[i] = new_cars[j];
-                        new_cars.RemoveAt(j);
-                        break;
+                        if (rmin > r)
+                        {
+                            founded = true;
+                            jbest = j;
+                            rmin = r;
+                            //cars[i] = new_cars[j];
+                            //new_cars.RemoveAt(j);
+                        }
                     }
                 }
-
+                
                 if(!founded)
                 {
                     cars.RemoveAt(i);
                     indexers.RemoveAt(i);
                     i--;
                     continue;
+                }
+                else
+                {
+                    cars[i] = new_cars[jbest];
+                    new_cars.RemoveAt(jbest);
                 }
             }
 

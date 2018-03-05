@@ -121,9 +121,9 @@ namespace Diplom_Forms
         {
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
             {
-                Image<Gray, Byte> last = null;
-                Image<Gray, float> flowX = null;
-                Image<Gray, float> flowY = null;
+                Image<Rgb, float> last = null;
+                //Image<Gray, float> flowX = null;
+                //Image<Gray, float> flowY = null;
 
                 Vector3[,] val = Procedurs.Medium(openFileDialog1.FileName);
                 Morf morf = Morf.GenerateKMean(val, 5);
@@ -133,6 +133,15 @@ namespace Diplom_Forms
                 {
                     avrs.Add(morf.regions[i].GetAverage(val));
                 }
+                for (int i = 0; i < morf.regions.Count; i++)
+                {
+                    morf.regions[i].Fill(avrs[i], val);
+                }
+
+                Image<Rgb, float> avr_map = new Image<Rgb, float>(val.GetImage());
+                ImageProcessing proc = new ImageProcessing(avr_map.Bitmap);
+                proc.Show();
+
                 float[,] temp = new float[val.GetLength(0), val.GetLength(1)];
                 float[,] temp2 = new float[val.GetLength(0), val.GetLength(1)];
                 byte[,] b_temp = new byte[val.GetLength(0), val.GetLength(1)];
@@ -143,46 +152,51 @@ namespace Diplom_Forms
 
                 VideoProcessig videoProcessig = new VideoProcessig(openFileDialog1.FileName, (map) =>
                 {
-                    val.WriteRGB(map);
-                    Procedurs.MorfSubtract(morf, avrs, val, temp);
-                    b_temp.ForEach(temp, (b, v) => (byte)(v > 0.2f ? 1 : 0));
-                    b_temp.BinaryThiken(b_temp2);
-                    b_temp2.BinaryThiken(b_temp);
-                    b_temp.BinaryThiken(b_temp2);
-                    b_temp2.BinaryThiken(b_temp);
-
-                    Image<Gray, Byte> image = new Image<Gray, byte>(map);
+                    last = new Image<Rgb, float>(map);
+                    CvInvoke.AbsDiff(last, avr_map, last);
+                    var grey = last.Convert<Gray, float>();
                     
-                    if(last == null)
-                    {
-                        last = image;
-                        return map;
-                    }
+                    grey.
+                    CvInvoke.Multiply(grey, new ScalarArray(1), grey);
+                    //var binar = grey.ThresholdBinary(new Gray(0.2), new Gray(1));
 
-                    CvInvoke.CalcOpticalFlowFarneback(last,image, flowX, flowY, 0.5, 3, 10, 3, 5, 1.5, Emgu.CV.CvEnum.OpticalflowFarnebackFlag.Default);
-                    CvInvoke.AccumulateSquare(flowX, flowY);
-                    CvInvoke.Sobel(flowY, flowX, Emgu.CV.CvEnum.DepthType.Cv32F, 1, 0);
+                    return grey.Bitmap;
 
-                    Morf mm = Morf.GenerateBinar(b_temp);
+                    //val.WriteRGB(map);
+                    //Procedurs.MorfSubtract(morf, avrs, val, temp);
+                    //b_temp.ForEach(temp, (b, v) => (byte)(v > 0.2f ? 1 : 0));
+                    //b_temp.BinaryThiken(b_temp2);
+                    //b_temp2.BinaryThiken(b_temp);
+                    //b_temp.BinaryThiken(b_temp2);
+                    //b_temp2.BinaryThiken(b_temp);
 
-                    cars.Clear();
+                    //Image<Gray, Byte> image = new Image<Gray, byte>(map);
+                    
 
-                    using (Graphics gr = Graphics.FromImage(map))
-                    {
-                        for (int i = 0; i < mm.regions.Count; i++)
-                        {
-                            var rect = mm.regions[i].GetSize();
-                            if (rect.Width * rect.Height > 1000)
-                            {
-                                gr.DrawRectangle(Pens.Green, rect);
-                                cars.Add(rect);
-                            }
-                        }
-                    }
+                    ////CvInvoke.CalcOpticalFlowFarneback(last,image, flowX, flowY, 0.5, 3, 10, 3, 5, 1.5, Emgu.CV.CvEnum.OpticalflowFarnebackFlag.Default);
+                    ////CvInvoke.AccumulateSquare(flowX, flowY);
+                    ////CvInvoke.Sobel(flowY, flowX, Emgu.CV.CvEnum.DepthType.Cv32F, 1, 0);
 
-                    tracer.TrackAndWrite(cars, ref map, 0.2f * map.Width);
+                    //Morf mm = Morf.GenerateBinar(b_temp);
 
-                    return map;
+                    //cars.Clear();
+
+                    //using (Graphics gr = Graphics.FromImage(map))
+                    //{
+                    //    for (int i = 0; i < mm.regions.Count; i++)
+                    //    {
+                    //        var rect = mm.regions[i].GetSize();
+                    //        if (rect.Width * rect.Height > 1000)
+                    //        {
+                    //            gr.DrawRectangle(Pens.Green, rect);
+                    //            cars.Add(rect);
+                    //        }
+                    //    }
+                    //}
+
+                    //tracer.TrackAndWrite(cars, ref map, 0.2f * map.Width);
+
+                    //return map;
                 });
                 videoProcessig.Show();
             }
